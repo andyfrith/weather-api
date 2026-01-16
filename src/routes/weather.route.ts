@@ -46,7 +46,7 @@ const getCurrentWeatherRoute = createRoute({
   description:
     "Retrieves current weather data for a specified city using the OpenWeather API.",
   request: {
-    query: WeatherQuerySchema.openapi("WeatherQuery"),
+    query: WeatherQuerySchema,
   },
   responses: {
     200: {
