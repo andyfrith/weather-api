@@ -1,0 +1,46 @@
+---
+alwaysApply: true
+---
+
+# Hono, Bun, Zod OpenAPI, Sentry, & OpenWeather API Rules
+
+## 1. Project Context & Stack
+
+- **Runtime**: Bun
+- **Framework**: Hono (v4+) using `@hono/zod-openapi`
+- **Weather Provider**: OpenWeather API (2.5 or 3.0)
+- **Monitoring**: Sentry (`@sentry/bun`)
+- **Testing**: `bun test`
+
+## 2. OpenWeather API Best Practices
+
+- **Endpoint Structure**: Always use the base URL `https://api.openweathermap.org/data/2.5/` (or `/3.0/` for One Call).
+- **Units & Lang**: Explicitly set `units=metric` (or imperial) and `lang=en` in all fetch calls to avoid unexpected default values (Kelvin).
+- **Rate Limit Handling**: Implement logic to handle `429 Too Many Requests`. Capture `429` errors in Sentry with a "Warning" level.
+- **Geocoding**: Use the OpenWeather Geocoding API (`/geo/1.0/direct`) to convert city names to `lat/lon` before calling weather endpoints for better accuracy.
+
+## 3. External API & Service Rules
+
+- **Service Isolation**: All OpenWeather logic must stay in `src/services/openweather.service.ts`.
+- **Response Validation**: Use Zod schemas to validate the specific OpenWeather JSON structure (e.g., the `main`, `weather`, and `wind` objects).
+- **Caching**: Implement a simple TTL cache (e.g., using an in-memory Map or `Bun.sqlite`) to store results for 10 minutes per location, as per OpenWeather's "API care" recommendations.
+- **Timeout**: Use `AbortSignal.timeout(5000)` for all weather fetch calls.
+
+## 4. Hono & OpenAPI Patterns
+
+- **Route Contracts**: Define OpenWeather-based routes using `createRoute`.
+- **Error Mapping**: Map OpenWeather error codes (`401`: Invalid Key, `404`: City Not Found) to Hono `HTTPException` with clear user messages.
+- **Security**: Never hardcode the `APPID`. Access it via `c.env.OPENWEATHER_API_KEY`.
+
+## 5. Testing & Mocking
+
+- **Mocking**: Use `import { mock } from "bun:test"` to simulate OpenWeather responses.
+- **Snapshot Testing**: Validate that your internal API responses (derived from OpenWeather) match your Zod OpenAPI schemas.
+
+## 6. Directory Structure
+
+- `/src`
+  - `instrument.ts`: Sentry init.
+  - `/routes`: Hono OpenAPI routes.
+  - `/services/openweather.service.ts`: OpenWeather fetch & cache logic.
+  - `/schemas/openweather.schema.ts`: Zod schemas for OpenWeather responses.
