@@ -17,7 +17,7 @@ export async function getText(
   if (!prompt) {
     throw new Error("Prompt is required");
   }
-  const result = streamText({
+  const result = await streamText({
     model: openai("gpt-4o"),
     prompt,
   });

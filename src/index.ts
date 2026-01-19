@@ -24,9 +24,7 @@ import {
   type WeatherBindings,
 } from "./routes";
 
-type Bindings = {
-  Bindings: WeatherBindings & AIBindings;
-};
+type Bindings = WeatherBindings & AIBindings;
 
 /**
  * Create the main OpenAPI Hono application
@@ -52,7 +50,12 @@ app.use(
   rateLimiter({
     windowMs: 3 * 60 * 1000, // 3 minutes
     limit: 5, // Limit each client to 5 requests per window
-    keyGenerator: (c) => c.req.header("x-forwarded-for") ?? "", // Use IP address as key
+    keyGenerator: (c) => {
+      const xff = c.req.header("x-forwarded-for");
+      return (
+        xff?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? "unknown"
+      );
+    },
   })
 );
 

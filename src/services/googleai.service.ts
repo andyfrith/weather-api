@@ -118,11 +118,14 @@ export async function fetchAIText(
       systemInstruction: systemPrompt,
     },
   });
-
-  const parsed = AITextResponseSchema.safeParse(result);
+  const parsed = AITextResponseSchema.safeParse({
+    text: result.text ?? "",
+  });
   if (!parsed.success) {
+    const safePrompt =
+      prompt.length > 200 ? `${prompt.slice(0, 200)}…` : prompt;
     Sentry.captureException(parsed.error, {
-      extra: { responseData: result, prompt },
+      extra: { responseData: result, prompt: safePrompt },
     });
     throw new Error("Invalid response from AI API");
   }

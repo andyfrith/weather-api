@@ -35,7 +35,13 @@ const textRoute = createRoute({
   summary: "Text",
   description: "Returns the text of the AI service.",
   request: {
-    query: AIQuerySchema,
+    body: {
+      content: {
+        "application/json": {
+          schema: AIQuerySchema,
+        },
+      },
+    },
   },
   responses: {
     200: {
@@ -51,7 +57,7 @@ const textRoute = createRoute({
 
 // Register the text route handler
 aiApp.openapi(textRoute, async (c) => {
-  const query = c.req.valid("query");
+  const query = c.req.valid("json");
 
   // In Bun runtime, environment variables are accessed via process.env
   const apiKey = process.env.GEMINI_API_KEY;
