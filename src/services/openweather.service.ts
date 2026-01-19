@@ -5,7 +5,10 @@ import {
   type OpenWeatherCurrentResponse,
   type GeocodingResult,
 } from "../schemas/openweather.schema";
-import type { CurrentWeatherResponse, WeatherQuery } from "../schemas/weather.schema";
+import type {
+  CurrentWeatherResponse,
+  WeatherQuery,
+} from "../schemas/weather.schema";
 
 /**
  * OpenWeather API base URLs
@@ -83,7 +86,10 @@ function getGeoCacheKey(city: string): string {
  * @param key - The cache key
  * @returns The cached data or null if not found/expired
  */
-function getFromCache<T>(cache: Map<string, CacheEntry<T>>, key: string): T | null {
+function getFromCache<T>(
+  cache: Map<string, CacheEntry<T>>,
+  key: string
+): T | null {
   const entry = cache.get(key);
   if (entry && entry.expires > Date.now()) {
     return entry.data;
@@ -101,7 +107,11 @@ function getFromCache<T>(cache: Map<string, CacheEntry<T>>, key: string): T | nu
  * @param key - The cache key
  * @param data - The data to cache
  */
-function setInCache<T>(cache: Map<string, CacheEntry<T>>, key: string, data: T): void {
+function setInCache<T>(
+  cache: Map<string, CacheEntry<T>>,
+  key: string,
+  data: T
+): void {
   cache.set(key, {
     data,
     expires: Date.now() + CACHE_TTL,
@@ -114,7 +124,10 @@ function setInCache<T>(cache: Map<string, CacheEntry<T>>, key: string, data: T):
  * @param message - Error message from OpenWeather
  * @returns OpenWeatherError with mapped status and message
  */
-function mapOpenWeatherError(statusCode: number, message: string): OpenWeatherError {
+function mapOpenWeatherError(
+  statusCode: number,
+  message: string
+): OpenWeatherError {
   switch (statusCode) {
     case 401:
       return new OpenWeatherError(401, "Invalid API key");
@@ -128,7 +141,10 @@ function mapOpenWeatherError(statusCode: number, message: string): OpenWeatherEr
       });
       return new OpenWeatherError(429, "Rate limit exceeded");
     default:
-      return new OpenWeatherError(statusCode, message || "OpenWeather API error");
+      return new OpenWeatherError(
+        statusCode,
+        message || "OpenWeather API error"
+      );
   }
 }
 
@@ -146,9 +162,16 @@ async function fetchWithTimeout(url: string): Promise<Response> {
     return response;
   } catch (error) {
     if (error instanceof DOMException && error.name === "TimeoutError") {
-      throw new OpenWeatherError(504, "Request timeout - OpenWeather API did not respond in time");
+      throw new OpenWeatherError(
+        504,
+        "Request timeout - OpenWeather API did not respond in time"
+      );
     }
-    throw new OpenWeatherError(503, "Failed to connect to OpenWeather API", error);
+    throw new OpenWeatherError(
+      503,
+      "Failed to connect to OpenWeather API",
+      error
+    );
   }
 }
 
@@ -159,7 +182,10 @@ async function fetchWithTimeout(url: string): Promise<Response> {
  * @returns GeocodingResult with lat/lon coordinates
  * @throws OpenWeatherError if geocoding fails or city not found
  */
-export async function geocodeCity(city: string, apiKey: string): Promise<GeocodingResult> {
+export async function geocodeCity(
+  city: string,
+  apiKey: string
+): Promise<GeocodingResult> {
   const cacheKey = getGeoCacheKey(city);
 
   // Check cache first
@@ -168,12 +194,16 @@ export async function geocodeCity(city: string, apiKey: string): Promise<Geocodi
     return cached;
   }
 
-  const url = `${OPENWEATHER_GEO_BASE}/direct?q=${encodeURIComponent(city)}&limit=1&appid=${apiKey}`;
+  const url = `${OPENWEATHER_GEO_BASE}/direct?q=${encodeURIComponent(
+    city
+  )}&limit=1&appid=${apiKey}`;
 
   const response = await fetchWithTimeout(url);
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+    const errorData = await response
+      .json()
+      .catch(() => ({ message: "Unknown error" }));
     throw mapOpenWeatherError(response.status, errorData.message);
   }
 
@@ -229,7 +259,9 @@ export async function fetchCurrentWeather(
   const response = await fetchWithTimeout(url);
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+    const errorData = await response
+      .json()
+      .catch(() => ({ message: "Unknown error" }));
     throw mapOpenWeatherError(response.status, errorData.message);
   }
 
@@ -313,22 +345,23 @@ export function transformWeatherResponse(
       visibility: owResponse.visibility,
       cloudiness: owResponse.clouds.all,
     },
-    precipitation: owResponse.rain || owResponse.snow
-      ? {
-          rain: owResponse.rain
-            ? {
-                "1h": owResponse.rain["1h"],
-                "3h": owResponse.rain["3h"],
-              }
-            : undefined,
-          snow: owResponse.snow
-            ? {
-                "1h": owResponse.snow["1h"],
-                "3h": owResponse.snow["3h"],
-              }
-            : undefined,
-        }
-      : undefined,
+    precipitation:
+      owResponse.rain || owResponse.snow
+        ? {
+            rain: owResponse.rain
+              ? {
+                  "1h": owResponse.rain["1h"],
+                  "3h": owResponse.rain["3h"],
+                }
+              : undefined,
+            snow: owResponse.snow
+              ? {
+                  "1h": owResponse.snow["1h"],
+                  "3h": owResponse.snow["3h"],
+                }
+              : undefined,
+          }
+        : undefined,
     timestamp: unixToISOString(owResponse.dt, 0),
     cached,
   };
@@ -346,16 +379,19 @@ export async function getCurrentWeather(
   query: WeatherQuery,
   apiKey: string
 ): Promise<CurrentWeatherResponse> {
-  const { city, units, lang } = query;
+  const { city, units, lang, lat, lon } = query;
   const language = lang ?? "en";
 
-  // Step 1: Geocode the city name to coordinates
-  const geoResult = await geocodeCity(city, apiKey);
+  // Step 1: Geocode the city name to coordinates if necessary
+  let geoResult: GeocodingResult | undefined;
+  if (city) {
+    geoResult = await geocodeCity(city, apiKey);
+  }
 
   // Step 2: Fetch current weather using coordinates
   const { data: weatherData, cached } = await fetchCurrentWeather(
-    geoResult.lat,
-    geoResult.lon,
+    geoResult?.lat ?? lat ?? 0,
+    geoResult?.lon ?? lon ?? 0,
     units,
     language,
     apiKey
@@ -378,7 +414,10 @@ export function clearCache(): void {
  * Gets current cache statistics
  * @returns Object with cache counts
  */
-export function getCacheStats(): { weatherEntries: number; geoEntries: number } {
+export function getCacheStats(): {
+  weatherEntries: number;
+  geoEntries: number;
+} {
   return {
     weatherEntries: weatherCache.size,
     geoEntries: geoCache.size,

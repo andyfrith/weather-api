@@ -10,7 +10,15 @@ import { z } from "@hono/zod-openapi";
  */
 export const WeatherQuerySchema = z
   .object({
-    city: z.string().min(1).openapi({
+    lat: z.coerce.number().optional().openapi({
+      description: "Latitude",
+      example: 51.5074,
+    }),
+    lon: z.coerce.number().optional().openapi({
+      description: "Longitude",
+      example: -0.1278,
+    }),
+    city: z.string().optional().openapi({
       description: "City name (e.g., 'London', 'New York', 'Tokyo')",
       example: "London",
     }),
