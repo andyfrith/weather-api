@@ -14,13 +14,50 @@ import { Sentry } from "./instrument";
 
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
+import { cors } from "hono/cors";
+import { rateLimiter } from "hono-rate-limiter";
 import { HTTPException } from "hono/http-exception";
-import { weatherApp, type Bindings } from "./routes";
+import {
+  aiApp,
+  weatherApp,
+  type AIBindings,
+  type WeatherBindings,
+} from "./routes";
+
+type Bindings = WeatherBindings & AIBindings;
 
 /**
  * Create the main OpenAPI Hono application
  */
 const app = new OpenAPIHono<{ Bindings: Bindings }>();
+
+/**
+ * Configure CORS middleware
+ * Allows requests from the frontend development server
+ */
+app.use(
+  "*",
+  cors({
+    origin: "http://localhost:5173",
+  })
+);
+
+/**
+ * Configure reate limiting middleware
+ * Prevents abuse of the API
+ */
+app.use(
+  rateLimiter({
+    windowMs: 3 * 60 * 1000, // 3 minutes
+    limit: 5, // Limit each client to 5 requests per window
+    keyGenerator: (c) => {
+      const xff = c.req.header("x-forwarded-for");
+      return (
+        xff?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? "unknown"
+      );
+    },
+  })
+);
 
 /**
  * Global error handler
@@ -109,6 +146,11 @@ app.get("/", (c) => {
 app.route("/", weatherApp);
 
 /**
+ * Mount AI routes
+ */
+app.route("/", aiApp);
+
+/**
  * OpenAPI documentation endpoint
  * Serves the OpenAPI specification as JSON
  */
@@ -135,6 +177,10 @@ app.doc("/openapi.json", {
   ],
   tags: [
     {
+      name: "AI",
+      description: "AI data endpoints",
+    },
+    {
       name: "Weather",
       description: "Weather data endpoints",
     },
@@ -157,4 +203,5 @@ app.get("/doc", swaggerUI({ url: "/openapi.json" }));
 export default {
   port: process.env.PORT ? parseInt(process.env.PORT, 10) : 3000,
   fetch: app.fetch,
+  idleTimeout: 20,
 };

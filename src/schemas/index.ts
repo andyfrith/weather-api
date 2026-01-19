@@ -65,3 +65,6 @@ export {
   type RateLimitError,
   type HealthCheckResponse,
 } from "./weather.schema";
+
+// AI API schemas (for OpenAPI documentation)
+export { AIQuerySchema, type AIQuery } from "./ai.schema";
