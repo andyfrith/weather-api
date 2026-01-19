@@ -13,7 +13,7 @@ import { systemPrompt } from "../lib/prompt";
 const CACHE_TTL = 30 * 60 * 1000;
 
 /**
- * Cache entry structure for storing weather data with expiration
+ * Cache entry structure for storing AI response data with expiration
  */
 interface CacheEntry<T> {
   data: T;
@@ -21,8 +21,8 @@ interface CacheEntry<T> {
 }
 
 /**
- * In-memory TTL cache for weather data
- * Key format: `${lat},${lon},${units}`
+ * In-memory TTL cache for AI responses
+ * Key format: derived from the prompt
  */
 const aiCache = new Map<string, CacheEntry<AITextResponse>>();
 
@@ -32,7 +32,7 @@ const aiCache = new Map<string, CacheEntry<AITextResponse>>();
  * @returns Cache key string
  */
 function getAICacheKey(prompt: string): string {
-  return prompt.toLowerCase().trim();
+  return prompt.trim();
 }
 
 /**
