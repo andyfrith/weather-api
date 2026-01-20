@@ -1,7 +1,9 @@
 {
   "name": "weather-api",
   "scripts": {
-    "dev": "bun run --hot src/index.ts"
+    "deploy": "wrangler deploy --minify",
+    "dev": "bun run --hot src/index.ts",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.12",
@@ -15,6 +17,7 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "wrangler": "^4.59.2"
   }
 }
