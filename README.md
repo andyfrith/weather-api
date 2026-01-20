@@ -1,29 +1,46 @@
-# 🌤️ Weather API: Speed Meets Atmosphere
+# 🌤️ Weather API: AI-Augmented High-Performance Backend
 
 [![Built with Bun](https://img.shields.io/badge/Runtime-Bun-black?style=flat-square&logo=bun)](https://bun.sh)
 [![Framework: Hono](https://img.shields.io/badge/Framework-Hono-FF4500?style=flat-square&logo=hono)](https://hono.dev)
-[![Documentation: OpenAPI](https://img.shields.io/badge/Docs-OpenAPI-49aa25?style=flat-square&logo=openapi-initiative)](https://swagger.io)
+[![AI: Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini-4285F4?style=flat-square&logo=googlegemini)](https://ai.google.dev/)
 [![Monitoring: Sentry](https://img.shields.io/badge/Monitoring-Sentry-362d59?style=flat-square&logo=sentry)](https://sentry.io)
 
-**Weather API** is a high-performance, type-safe RESTful service designed for the modern web. Built using the **Bun** JavaScript runtime and the **Hono** framework, it delivers real-time weather data from OpenWeather with sub-millisecond routing and end-to-end type safety.
+**Weather API** is a blazingly fast, type-safe RESTful service built on the **Bun** runtime and the **Hono** framework. It leverages **Google AI (Gemini)** to provide intelligent summaries and **Zod OpenAPI** to enforce strict data contracts.
 
-## ✨ Features
+## ✨ Key Features
 
-- **⚡ Blazing Fast**: Powered by Bun's native performance and Hono’s lightweight router.
-- **🛡️ Type-Safe Contracts**: Deep integration with `zod-openapi` ensures your documentation and code are never out of sync.
-- **🌍 OpenWeather Integrated**: Real-time weather data including temperature, humidity, and atmospheric conditions.
-- **🔍 Interactive Docs**: Auto-generated Swagger UI for easy API exploration and testing.
-- **🚨 Proactive Monitoring**: Integrated with Sentry for real-time error tracking and performance profiling.
-- **🧪 Robust Testing**: Built-in test suite using the native `bun test` runner for maximum reliability.
+- **🤖 Google AI Integration**: Utilizes **Gemini 1.5** to generate human-readable weather insights, clothing recommendations, and activity suggestions based on real-time data.
+- **⚡ Blazing Fast Routing**: Powered by Hono’s lightweight router and Bun’s optimized JavaScript engine.
+- **🛡️ Contract-First Architecture**: End-to-end type safety using `@hono/zod-openapi`. Define once, validate everywhere.
+- **🛑 Smart Rate Limiting**: Built-in protection against API abuse, ensuring service stability and quota safety.
+- **🌍 OpenWeather Integration**: Robust real-time atmospheric data with advanced error mapping.
+- **🔍 Self-Documenting API**: Interactive Swagger UI automatically generated from your Zod schemas.
+
+---
+
+## 🏗️ Architecture Best Practices
+
+### 1. AI Service Layer
+
+Google AI logic is isolated within `src/services/ai.service.ts`. We treat the LLM as a structured data provider, using specific prompts to ensure the AI output remains consistent with our API's schema.
+
+### 2. Schema-Driven Validation
+
+Every request and AI-generated response is validated against **Zod schemas**. This ensures that even if an AI model's output format fluctuates, your API consumers always receive structured, reliable data.
+
+### 3. Rate Limiting & Resilience
+
+- **Abuse Prevention**: Middleware-level rate limiting protects both your OpenWeather and Google AI quotas.
+- **Timeouts**: Every external fetch (Weather & AI) uses `AbortSignal.timeout` to maintain a responsive user experience.
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Prerequisites
-
-Ensure you have [Bun](https://bun.sh/) installed on your machine.
+### 1. Installation
 
 ```bash
-curl -fsSL [https://bun.sh/install](https://bun.sh/install) | bash
+git clone [https://github.com/andyfrith/weather-api.git](https://github.com/andyfrith/weather-api.git)
+cd weather-api
+bun install
 ```
