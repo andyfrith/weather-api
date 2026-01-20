@@ -1,46 +1,65 @@
-# 🌤️ Weather API: AI-Augmented High-Performance Backend
+# 🌤️ Weather API: Edge-First AI-Augmented Backend
 
-[![Built with Bun](https://img.shields.io/badge/Runtime-Bun-black?style=flat-square&logo=bun)](https://bun.sh)
+[![Deployed to: Cloudflare Workers](https://img.shields.io/badge/Deployed_to-Cloudflare_Workers-F38020?style=flat-square&logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
 [![Framework: Hono](https://img.shields.io/badge/Framework-Hono-FF4500?style=flat-square&logo=hono)](https://hono.dev)
-[![AI: Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini-4285F4?style=flat-square&logo=googlegemini)](https://ai.google.dev/)
-[![Monitoring: Sentry](https://img.shields.io/badge/Monitoring-Sentry-362d59?style=flat-square&logo=sentry)](https://sentry.io)
+[![AI: Gemini 2.5 Flash](https://img.shields.io/badge/AI-Gemini_2.5_Flash-4285F4?style=flat-square&logo=googlegemini)](https://ai.google.dev/)
+[![Documentation: OpenAPI](https://img.shields.io/badge/Docs-OpenAPI-49aa25?style=flat-square&logo=openapi-initiative)](https://swagger.io)
 
-**Weather API** is a blazingly fast, type-safe RESTful service built on the **Bun** runtime and the **Hono** framework. It leverages **Google AI (Gemini)** to provide intelligent summaries and **Zod OpenAPI** to enforce strict data contracts.
+**Weather API** is a high-performance, type-safe service running on **Cloudflare Workers**. It combines the global scale of the edge with the lightning-fast intelligence of **Google Gemini 2.5 Flash**, providing a "Single Source of Truth" for weather data and AI-driven insights.
 
-## ✨ Key Features
+## ✨ Latest Features
 
-- **🤖 Google AI Integration**: Utilizes **Gemini 1.5** to generate human-readable weather insights, clothing recommendations, and activity suggestions based on real-time data.
-- **⚡ Blazing Fast Routing**: Powered by Hono’s lightweight router and Bun’s optimized JavaScript engine.
-- **🛡️ Contract-First Architecture**: End-to-end type safety using `@hono/zod-openapi`. Define once, validate everywhere.
-- **🛑 Smart Rate Limiting**: Built-in protection against API abuse, ensuring service stability and quota safety.
-- **🌍 OpenWeather Integration**: Robust real-time atmospheric data with advanced error mapping.
-- **🔍 Self-Documenting API**: Interactive Swagger UI automatically generated from your Zod schemas.
+- **🌐 Cloudflare Workers Deployment**: Optimized for the edge, leveraging Hono for sub-100ms response times globally.
+- **🧠 Gemini 2.5 Flash Integration**: Uses the latest 2.5 Flash model for near-instant weather summaries, clothing recommendations, and activity suggestions with enhanced reasoning efficiency.
+- **🛡️ Hono + Zod OpenAPI**: Strict contract-first development. The API is self-documenting and provides end-to-end type safety.
+- **🛑 Advanced Rate Limiting**: Built-in middleware protection to manage upstream API quotas (OpenWeather & Google AI).
+- **🚨 Sentry for Workers**: Specialized observability to capture and monitor edge-case errors in the serverless runtime.
 
 ---
 
-## 🏗️ Architecture Best Practices
+## 🏗️ Architecture Overview
 
-### 1. AI Service Layer
+The application utilizes a serverless architecture designed for zero cold starts and global low latency.
 
-Google AI logic is isolated within `src/services/ai.service.ts`. We treat the LLM as a structured data provider, using specific prompts to ensure the AI output remains consistent with our API's schema.
+````mermaid
+graph TD
+    User((User/Client)) -->|HTTPS Request| CF[Cloudflare Edge Node]
+    subgraph Cloudflare Worker
+        CF --> Hono[Hono Router]
+        Hono --> Middleware[Rate Limiter & Sentry]
+        Middleware --> Service[Weather Service]
+    end
+    Service -->|Fetch Data| OW[(OpenWeather API)]
+    Service -->|Contextual Prompt| Gemini[(Gemini 2.5 Flash)]
+    Gemini -->|JSON Insights| Service
+    Service -->|Validated Response| User
 
-### 2. Schema-Driven Validation
+## 🏗️ Best Practices
 
-Every request and AI-generated response is validated against **Zod schemas**. This ensures that even if an AI model's output format fluctuates, your API consumers always receive structured, reliable data.
+### 1. Edge-Native Performance
 
-### 3. Rate Limiting & Resilience
+By running **Hono** on **Cloudflare Workers**, the application utilizes a "no-cold-start" architecture, delivering data from the nearest edge node to the end user.
 
-- **Abuse Prevention**: Middleware-level rate limiting protects both your OpenWeather and Google AI quotas.
-- **Timeouts**: Every external fetch (Weather & AI) uses `AbortSignal.timeout` to maintain a responsive user experience.
+### 2. Intelligent Insights
+
+The API utilizes **Gemini 2.5 Flash** to transform raw data into actionable advice.
+
+- **Low Latency AI**: Flash 2.5 provides the speed required for real-time edge interactions.
+- **Schema Validation**: Every AI-generated response is validated via Zod to ensure JSON structure integrity and prevent "hallucinations" in the UI.
+
+### 3. Contract-First Integrity
+
+- **Zod-to-OpenAPI**: Automated documentation ensures the UI client is always in sync with the server.
+- **Type-Safe RPC**: Provides a seamless developer experience when connecting with the [Weather React Client](https://github.com/andyfrith/weather-reactjs).
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Installation
+### 1. Installation & Local Dev
 
 ```bash
 git clone [https://github.com/andyfrith/weather-api.git](https://github.com/andyfrith/weather-api.git)
 cd weather-api
 bun install
-```
+````
