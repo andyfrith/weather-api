@@ -9,14 +9,16 @@
  */
 
 // IMPORTANT: Import Sentry instrumentation first before any other modules
-import "./instrument";
-import { Sentry } from "./instrument";
+import { initSentry, getSentry } from "./instrument";
+
+// Initialize Sentry (async, but we don't need to wait for it)
+initSentry();
 
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
 import { cors } from "hono/cors";
-import { rateLimiter } from "hono-rate-limiter";
 import { HTTPException } from "hono/http-exception";
+import { rateLimiter } from "hono-rate-limiter";
 import {
   aiApp,
   weatherApp,
@@ -24,7 +26,22 @@ import {
   type WeatherBindings,
 } from "./routes";
 
-type Bindings = WeatherBindings & AIBindings;
+/**
+ * Check if we're running in Bun runtime (vs Cloudflare Workers)
+ * Used to conditionally load Cloudflare-specific modules
+ */
+const isBunRuntime =
+  typeof (globalThis as Record<string, unknown>).Bun !== "undefined";
+
+/**
+ * Rate limiter bindings for Cloudflare KV
+ * Optional because KV is only available in Cloudflare Workers
+ */
+type RateLimiterBindings = {
+  RATE_LIMITER?: KVNamespace;
+};
+
+type Bindings = WeatherBindings & AIBindings & RateLimiterBindings;
 
 /**
  * Create the main OpenAPI Hono application
@@ -43,21 +60,47 @@ app.use(
 );
 
 /**
- * Configure reate limiting middleware
- * Prevents abuse of the API
+ * Rate limiting middleware
+ * - In Cloudflare Workers: Uses KV store for distributed rate limiting
+ * - In Bun: Uses default in-memory store for local development
+ *
+ * Configuration:
+ * - windowMs: 3 minutes
+ * - limit: 25 requests per window per client
+ * - Uses cf-connecting-ip header (set by Cloudflare) for client identification
  */
-app.use(
-  rateLimiter({
+app.use("*", async (c, next) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let store: any = undefined;
+
+  // Only use Cloudflare KV store when running in Workers (not Bun)
+  if (!isBunRuntime && c.env.RATE_LIMITER) {
+    try {
+      // Dynamic import to avoid 'cloudflare:workers' error in Bun
+      const { WorkersKVStore } = await import("@hono-rate-limiter/cloudflare");
+      store = new WorkersKVStore({ namespace: c.env.RATE_LIMITER as any });
+    } catch {
+      console.warn("[Rate Limiter] Failed to load KV store, using in-memory");
+    }
+  }
+
+  const middleware = rateLimiter<{ Bindings: Bindings }>({
     windowMs: 3 * 60 * 1000, // 3 minutes
-    limit: 5, // Limit each client to 5 requests per window
+    limit: 25, // Limit each client to 25 requests per window
+    store, // undefined = default in-memory store
     keyGenerator: (c) => {
-      const xff = c.req.header("x-forwarded-for");
+      // Use Cloudflare's cf-connecting-ip header (most reliable in CF environment)
+      // Fallback to x-forwarded-for or x-real-ip for local development
       return (
-        xff?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? "unknown"
+        c.req.header("cf-connecting-ip") ??
+        c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+        c.req.header("x-real-ip") ??
+        "unknown"
       );
     },
-  })
-);
+  });
+  return middleware(c, next);
+});
 
 /**
  * Global error handler
@@ -65,7 +108,7 @@ app.use(
  */
 app.onError((err, c) => {
   // Capture the error in Sentry
-  Sentry.captureException(err, {
+  getSentry().captureException(err, {
     extra: {
       path: c.req.path,
       method: c.req.method,
@@ -200,8 +243,9 @@ app.get("/doc", swaggerUI({ url: "/openapi.json" }));
 /**
  * Export the app for Bun to serve
  */
-export default {
-  port: process.env.PORT ? parseInt(process.env.PORT, 10) : 3000,
-  fetch: app.fetch,
-  idleTimeout: 20,
-};
+// export default {
+//   port: process.env.PORT ? parseInt(process.env.PORT, 10) : 3000,
+//   fetch: app.fetch,
+//   idleTimeout: 20,
+// };
+export default app;

@@ -1,3 +1,4 @@
+// @ts-nocheck - Test file uses fetch mocks that don't fully implement Bun's fetch type
 import { describe, it, expect, beforeEach, afterEach, mock, spyOn } from "bun:test";
 import * as Sentry from "@sentry/bun";
 import {
