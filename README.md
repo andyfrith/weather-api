@@ -17,24 +17,7 @@
 
 ---
 
-## 🏗️ Architecture Overview
-
-The application utilizes a serverless architecture designed for zero cold starts and global low latency.
-
-````mermaid
-graph TD
-    User((User/Client)) -->|HTTPS Request| CF[Cloudflare Edge Node]
-    subgraph Cloudflare Worker
-        CF --> Hono[Hono Router]
-        Hono --> Middleware[Rate Limiter & Sentry]
-        Middleware --> Service[Weather Service]
-    end
-    Service -->|Fetch Data| OW[(OpenWeather API)]
-    Service -->|Contextual Prompt| Gemini[(Gemini 2.5 Flash)]
-    Gemini -->|JSON Insights| Service
-    Service -->|Validated Response| User
-
-## 🏗️ Best Practices
+## 🏗️ Architecture & Best Practices
 
 ### 1. Edge-Native Performance
 
@@ -62,4 +45,4 @@ The API utilizes **Gemini 2.5 Flash** to transform raw data into actionable advi
 git clone [https://github.com/andyfrith/weather-api.git](https://github.com/andyfrith/weather-api.git)
 cd weather-api
 bun install
-````
+```
