@@ -2,12 +2,14 @@
   "name": "weather-api",
   "scripts": {
     "deploy": "wrangler deploy --minify",
+    "dev:cloudflare": "wrangler dev --port 3000",
     "dev": "bun run --hot src/index.ts",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.12",
     "@google/genai": "^1.37.0",
+    "@hono-rate-limiter/cloudflare": "^0.2.2",
     "@hono/swagger-ui": "^0.5.0",
     "@hono/zod-openapi": "^1.2.0",
     "@sentry/bun": "^10.34.0",
@@ -17,6 +19,7 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260120.0",
     "@types/bun": "latest",
     "wrangler": "^4.59.2"
   }

@@ -201,10 +201,10 @@ export async function geocodeCity(
   const response = await fetchWithTimeout(url);
 
   if (!response.ok) {
-    const errorData = await response
+    const errorData = (await response
       .json()
-      .catch(() => ({ message: "Unknown error" }));
-    throw mapOpenWeatherError(response.status, errorData.message);
+      .catch(() => ({ message: "Unknown error" }))) as { message?: string };
+    throw mapOpenWeatherError(response.status, errorData.message ?? "Unknown error");
   }
 
   const data = await response.json();
@@ -259,10 +259,10 @@ export async function fetchCurrentWeather(
   const response = await fetchWithTimeout(url);
 
   if (!response.ok) {
-    const errorData = await response
+    const errorData = (await response
       .json()
-      .catch(() => ({ message: "Unknown error" }));
-    throw mapOpenWeatherError(response.status, errorData.message);
+      .catch(() => ({ message: "Unknown error" }))) as { message?: string };
+    throw mapOpenWeatherError(response.status, errorData.message ?? "Unknown error");
   }
 
   const data = await response.json();
