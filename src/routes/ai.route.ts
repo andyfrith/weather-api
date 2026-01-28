@@ -9,7 +9,7 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { HTTPException } from "hono/http-exception";
 import { AIQuerySchema } from "../schemas";
-import { getText } from "../services/googleai.service";
+import { getText } from "../services/ollamaai.service";
 import { AITextResponseSchema } from "../schemas/ai.schema";
 
 /**
