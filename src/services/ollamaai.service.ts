@@ -102,7 +102,6 @@ export function getCacheStats(): {
  */
 export async function fetchAIText(
   prompt: string,
-  apiKey: string,
 ): Promise<{ data: AITextResponse; cached: boolean }> {
   const cacheKey = getAICacheKey(prompt);
   const cached = getFromCache(aiCache, cacheKey);
@@ -120,14 +119,6 @@ export async function fetchAIText(
     stream: false,
   });
 
-  // const ai = new GoogleGenAI({ apiKey });
-  // const result = await ai.models.generateContent({
-  //   model: "gemini-2.5-flash",
-  //   contents: prompt,
-  //   config: {
-  //     systemInstruction: systemPrompt,
-  //   },
-  // });
   const parsed = AITextResponseSchema.safeParse({
     text: result.message.content ?? "",
   });
@@ -152,26 +143,12 @@ export async function fetchAIText(
  * @returns AI response text
  * @throws Error on any API errors
  */
-export async function getText(
-  query: AIQuery,
-  apiKey: string,
-): Promise<AITextResponse> {
+export async function getText(query: AIQuery): Promise<AITextResponse> {
   const { prompt } = query;
   if (!prompt) {
     throw new Error("Prompt is required");
   }
 
-  const { data: aiData, cached } = await fetchAIText(prompt, apiKey);
+  const { data: aiData, cached } = await fetchAIText(prompt);
   return aiData;
-
-  // const ai = new GoogleGenAI({ apiKey });
-  // const result = await ai.models.generateContent({
-  //   model: "gemini-2.5-flash",
-  //   contents: prompt,
-  //   config: {
-  //     systemInstruction: systemPrompt,
-  //   },
-  // });
-
-  // return { text: result.text ?? "" };
 }

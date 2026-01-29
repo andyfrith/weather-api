@@ -21,6 +21,7 @@ import { HTTPException } from "hono/http-exception";
 import { rateLimiter } from "hono-rate-limiter";
 import {
   aiApp,
+  aiOllamaApp,
   weatherApp,
   type AIBindings,
   type WeatherBindings,
@@ -56,7 +57,7 @@ app.use(
   "*",
   cors({
     origin: "http://localhost:5173",
-  })
+  }),
 );
 
 /**
@@ -130,7 +131,7 @@ app.onError((err, c) => {
           message: err.message,
         },
       },
-      err.status
+      err.status,
     );
   }
 
@@ -146,7 +147,7 @@ app.onError((err, c) => {
           process.env.NODE_ENV === "development" ? err.message : undefined,
       },
     },
-    500
+    500,
   );
 });
 
@@ -162,7 +163,7 @@ app.notFound((c) => {
         details: `Route ${c.req.method} ${c.req.path} not found`,
       },
     },
-    404
+    404,
   );
 });
 
@@ -192,6 +193,11 @@ app.route("/", weatherApp);
  * Mount AI routes
  */
 app.route("/", aiApp);
+
+/**
+ * Mount Ollama AI routes
+ */
+app.route("/", aiOllamaApp);
 
 /**
  * OpenAPI documentation endpoint

@@ -9,7 +9,7 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { HTTPException } from "hono/http-exception";
 import { AIQuerySchema } from "../schemas";
-import { getText } from "../services/googleai.service";
+import { getText } from "../services/ollamaai.service";
 import { AITextResponseSchema } from "../schemas/ai.schema";
 
 /**
@@ -22,7 +22,7 @@ type Bindings = {
 /**
  * Create a new Hono app instance with OpenAPI support
  */
-const aiApp = new OpenAPIHono<{ Bindings: Bindings }>();
+const aiOllamaApp = new OpenAPIHono<{ Bindings: Bindings }>();
 
 /**
  * Route definition for POST /ai/text
@@ -30,10 +30,10 @@ const aiApp = new OpenAPIHono<{ Bindings: Bindings }>();
  */
 const textRoute = createRoute({
   method: "post",
-  path: "/ai/text",
+  path: "/ai/ollama/text",
   tags: ["AI"],
   summary: "Text",
-  description: "Returns the text of the AI service.",
+  description: "Returns the text of the Ollama AI service.",
   request: {
     body: {
       content: {
@@ -45,7 +45,7 @@ const textRoute = createRoute({
   },
   responses: {
     200: {
-      description: "AI text data retrieved successfully",
+      description: "Ollama AI text data retrieved successfully",
       content: {
         "application/json": {
           schema: AITextResponseSchema,
@@ -56,7 +56,7 @@ const textRoute = createRoute({
 });
 
 // Register the text route handler
-aiApp.openapi(textRoute, async (c) => {
+aiOllamaApp.openapi(textRoute, async (c) => {
   const query = c.req.valid("json");
 
   // In Bun runtime, environment variables are accessed via process.env
@@ -69,12 +69,12 @@ aiApp.openapi(textRoute, async (c) => {
   }
 
   try {
-    const textData = await getText(query, apiKey);
+    const textData = await getText(query);
     return c.json(textData, 200);
   } catch (error) {
     throw error;
   }
 });
 
-export { aiApp };
+export { aiOllamaApp };
 export type { Bindings };
