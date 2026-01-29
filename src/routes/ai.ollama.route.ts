@@ -16,7 +16,8 @@ import { AITextResponseSchema } from "../schemas/ai.schema";
  * Environment bindings type definition
  */
 type Bindings = {
-  GEMINI_API_KEY: string;
+  OLLAMA_HOST: string;
+  OLLAMA_MODEL: string;
 };
 
 /**
@@ -60,16 +61,23 @@ aiOllamaApp.openapi(textRoute, async (c) => {
   const query = c.req.valid("json");
 
   // In Bun runtime, environment variables are accessed via process.env
-  const apiKey = process.env.GEMINI_API_KEY;
+  const ollamaHost = process.env.OLLAMA_HOST;
+  const ollamaModel = process.env.OLLAMA_MODEL;
 
-  if (!apiKey) {
+  if (!ollamaHost) {
     throw new HTTPException(500, {
-      message: "Google AI API key not configured",
+      message: "Ollama host not configured",
+    });
+  }
+
+  if (!ollamaModel) {
+    throw new HTTPException(500, {
+      message: "Ollama model not configured",
     });
   }
 
   try {
-    const textData = await getText(query);
+    const textData = await getText(query, ollamaHost, ollamaModel);
     return c.json(textData, 200);
   } catch (error) {
     throw error;

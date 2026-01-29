@@ -4,7 +4,7 @@ import {
   AITextResponse,
   AITextResponseSchema,
 } from "../schemas/ai.schema";
-import ollama from "ollama";
+import { Ollama } from "ollama";
 import { systemPrompt } from "../lib/prompt";
 
 /**
@@ -102,6 +102,8 @@ export function getCacheStats(): {
  */
 export async function fetchAIText(
   prompt: string,
+  ollamaHost: string,
+  ollamaModel: string,
 ): Promise<{ data: AITextResponse; cached: boolean }> {
   const cacheKey = getAICacheKey(prompt);
   const cached = getFromCache(aiCache, cacheKey);
@@ -109,8 +111,12 @@ export async function fetchAIText(
     return { data: cached, cached: true };
   }
 
+  const ollama = new Ollama({
+    host: ollamaHost,
+  });
+
   const result = await ollama.chat({
-    model: "llama3",
+    model: ollamaModel,
     messages: [
       { role: "user", content: prompt },
       { role: "system", content: systemPrompt },
@@ -143,12 +149,20 @@ export async function fetchAIText(
  * @returns AI response text
  * @throws Error on any API errors
  */
-export async function getText(query: AIQuery): Promise<AITextResponse> {
+export async function getText(
+  query: AIQuery,
+  ollamaHost: string,
+  ollamaModel: string,
+): Promise<AITextResponse> {
   const { prompt } = query;
   if (!prompt) {
     throw new Error("Prompt is required");
   }
 
-  const { data: aiData, cached } = await fetchAIText(prompt);
+  const { data: aiData, cached } = await fetchAIText(
+    prompt,
+    ollamaHost,
+    ollamaModel,
+  );
   return aiData;
 }
