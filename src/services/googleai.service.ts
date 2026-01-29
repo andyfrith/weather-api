@@ -13,6 +13,11 @@ import { systemPrompt } from "../lib/prompt";
 const CACHE_TTL = 30 * 60 * 1000;
 
 /**
+ * Maximum number of cache entries
+ */
+const MAX_CACHE_ENTRIES = 500;
+
+/**
  * Cache entry structure for storing AI response data with expiration
  */
 interface CacheEntry<T> {
@@ -32,7 +37,7 @@ const aiCache = new Map<string, CacheEntry<AITextResponse>>();
  * @returns Cache key string
  */
 function getAICacheKey(prompt: string): string {
-  return prompt.trim();
+  return `gemini-2.5-flash::${prompt.trim()}`;
 }
 
 /**
@@ -43,7 +48,7 @@ function getAICacheKey(prompt: string): string {
  */
 function getFromCache<T>(
   cache: Map<string, CacheEntry<T>>,
-  key: string
+  key: string,
 ): T | null {
   const entry = cache.get(key);
   if (entry && entry.expires > Date.now()) {
@@ -65,8 +70,14 @@ function getFromCache<T>(
 function setInCache<T>(
   cache: Map<string, CacheEntry<T>>,
   key: string,
-  data: T
+  data: T,
 ): void {
+  if (cache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey) {
+      cache.delete(oldestKey);
+    }
+  }
   cache.set(key, {
     data,
     expires: Date.now() + CACHE_TTL,
@@ -102,7 +113,7 @@ export function getCacheStats(): {
  */
 export async function fetchAIText(
   prompt: string,
-  apiKey: string
+  apiKey: string,
 ): Promise<{ data: AITextResponse; cached: boolean }> {
   const cacheKey = getAICacheKey(prompt);
   const cached = getFromCache(aiCache, cacheKey);
@@ -143,7 +154,7 @@ export async function fetchAIText(
  */
 export async function getText(
   query: AIQuery,
-  apiKey: string
+  apiKey: string,
 ): Promise<AITextResponse> {
   const { prompt } = query;
   if (!prompt) {

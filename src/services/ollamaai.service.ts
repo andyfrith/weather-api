@@ -13,6 +13,11 @@ import { systemPrompt } from "../lib/prompt";
 const CACHE_TTL = 30 * 60 * 1000;
 
 /**
+ * Maximum number of cache entries
+ */
+const MAX_CACHE_ENTRIES = 500;
+
+/**
  * Cache entry structure for storing AI response data with expiration
  */
 interface CacheEntry<T> {
@@ -29,10 +34,16 @@ const aiCache = new Map<string, CacheEntry<AITextResponse>>();
 /**
  * Generates a cache key for AI data
  * @param prompt - Prompt
+ * @param ollamaHost - Ollama host
+ * @param ollamaModel - Ollama model
  * @returns Cache key string
  */
-function getAICacheKey(prompt: string): string {
-  return prompt.trim();
+function getAICacheKey(
+  prompt: string,
+  ollamaHost: string,
+  ollamaModel: string,
+): string {
+  return `${ollamaHost}::${ollamaModel}::${prompt.trim()}`;
 }
 
 /**
@@ -67,6 +78,12 @@ function setInCache<T>(
   key: string,
   data: T,
 ): void {
+  if (cache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey) {
+      cache.delete(oldestKey);
+    }
+  }
   cache.set(key, {
     data,
     expires: Date.now() + CACHE_TTL,
@@ -105,7 +122,7 @@ export async function fetchAIText(
   ollamaHost: string,
   ollamaModel: string,
 ): Promise<{ data: AITextResponse; cached: boolean }> {
-  const cacheKey = getAICacheKey(prompt);
+  const cacheKey = getAICacheKey(prompt, ollamaHost, ollamaModel);
   const cached = getFromCache(aiCache, cacheKey);
   if (cached) {
     return { data: cached, cached: true };

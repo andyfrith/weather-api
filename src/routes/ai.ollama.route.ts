@@ -26,7 +26,7 @@ type Bindings = {
 const aiOllamaApp = new OpenAPIHono<{ Bindings: Bindings }>();
 
 /**
- * Route definition for POST /ai/text
+ * Route definition for POST /ai/ollama/text
  * Returns the text of the response from the AI service.
  */
 const textRoute = createRoute({
