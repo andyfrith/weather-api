@@ -4,7 +4,7 @@ import {
   AITextResponse,
   AITextResponseSchema,
 } from "../schemas/ai.schema";
-import { GoogleGenAI } from "@google/genai";
+import { Ollama } from "ollama";
 import { systemPrompt } from "../lib/prompt";
 
 /**
@@ -34,10 +34,16 @@ const aiCache = new Map<string, CacheEntry<AITextResponse>>();
 /**
  * Generates a cache key for AI data
  * @param prompt - Prompt
+ * @param ollamaHost - Ollama host
+ * @param ollamaModel - Ollama model
  * @returns Cache key string
  */
-function getAICacheKey(prompt: string): string {
-  return `gemini-2.5-flash::${prompt.trim()}`;
+function getAICacheKey(
+  prompt: string,
+  ollamaHost: string,
+  ollamaModel: string,
+): string {
+  return `${ollamaHost}::${ollamaModel}::${prompt.trim()}`;
 }
 
 /**
@@ -113,24 +119,31 @@ export function getCacheStats(): {
  */
 export async function fetchAIText(
   prompt: string,
-  apiKey: string,
+  ollamaHost: string,
+  ollamaModel: string,
 ): Promise<{ data: AITextResponse; cached: boolean }> {
-  const cacheKey = getAICacheKey(prompt);
+  const cacheKey = getAICacheKey(prompt, ollamaHost, ollamaModel);
   const cached = getFromCache(aiCache, cacheKey);
   if (cached) {
     return { data: cached, cached: true };
   }
 
-  const ai = new GoogleGenAI({ apiKey });
-  const result = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: prompt,
-    config: {
-      systemInstruction: systemPrompt,
-    },
+  const ollama = new Ollama({
+    host: ollamaHost,
   });
+
+  const result = await ollama.chat({
+    model: ollamaModel,
+    messages: [
+      { role: "user", content: prompt },
+      { role: "system", content: systemPrompt },
+    ],
+    format: "json",
+    stream: false,
+  });
+
   const parsed = AITextResponseSchema.safeParse({
-    text: result.text ?? "",
+    text: result.message.content ?? "",
   });
   if (!parsed.success) {
     const safePrompt =
@@ -138,8 +151,9 @@ export async function fetchAIText(
     Sentry.captureException(parsed.error, {
       extra: { responseData: result, prompt: safePrompt },
     });
-    throw new Error("Invalid response from AI API");
+    throw new Error("Invalid response from Ollama AI API");
   }
+  // console.log("Ollama AI API result:", result);
   setInCache(aiCache, cacheKey, parsed.data);
   return { data: parsed.data, cached: false };
 }
@@ -154,24 +168,18 @@ export async function fetchAIText(
  */
 export async function getText(
   query: AIQuery,
-  apiKey: string,
+  ollamaHost: string,
+  ollamaModel: string,
 ): Promise<AITextResponse> {
   const { prompt } = query;
   if (!prompt) {
     throw new Error("Prompt is required");
   }
 
-  const { data: aiData, cached } = await fetchAIText(prompt, apiKey);
+  const { data: aiData, cached } = await fetchAIText(
+    prompt,
+    ollamaHost,
+    ollamaModel,
+  );
   return aiData;
-
-  // const ai = new GoogleGenAI({ apiKey });
-  // const result = await ai.models.generateContent({
-  //   model: "gemini-2.5-flash",
-  //   contents: prompt,
-  //   config: {
-  //     systemInstruction: systemPrompt,
-  //   },
-  // });
-
-  // return { text: result.text ?? "" };
 }
