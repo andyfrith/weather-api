@@ -1,13 +1,17 @@
 import * as Sentry from "@sentry/bun";
 import {
-  OpenWeatherCurrentResponseSchema,
-  GeocodingResponseSchema,
-  type OpenWeatherCurrentResponse,
+  OpenWeatherCurrentWeatherResponseSchema,
+  OpenWeatherFiveDayForecastResponseSchema,
+  type OpenWeatherCurrentWeatherResponse,
+  type OpenWeatherFiveDayForecastResponse,
   type GeocodingResult,
+  GeocodingResponseSchema,
 } from "../schemas/openweather.schema";
-import type {
+import {
   CurrentWeatherResponse,
-  WeatherQuery,
+  FiveDayForecastResponse,
+  CurrentWeatherQuery,
+  FiveDayForecastQuery,
 } from "../schemas/weather.schema";
 
 /**
@@ -34,11 +38,21 @@ interface CacheEntry<T> {
   expires: number;
 }
 
+enum FunctionName {
+  FETCH_CURRENT_WEATHER = "current",
+  FETCH_FIVE_DAY_FORECAST = "forecast",
+}
+
 /**
  * In-memory TTL cache for weather data
  * Key format: `${lat},${lon},${units}`
  */
-const weatherCache = new Map<string, CacheEntry<OpenWeatherCurrentResponse>>();
+const weatherCache = new Map<
+  string,
+  CacheEntry<
+    OpenWeatherCurrentWeatherResponse | OpenWeatherFiveDayForecastResponse
+  >
+>();
 
 /**
  * In-memory TTL cache for geocoding results
@@ -65,10 +79,16 @@ export class OpenWeatherError extends Error {
  * @param lat - Latitude
  * @param lon - Longitude
  * @param units - Temperature units
+ * @param functionName - Function name
  * @returns Cache key string
  */
-function getWeatherCacheKey(lat: number, lon: number, units: string): string {
-  return `${lat.toFixed(4)},${lon.toFixed(4)},${units}`;
+function getWeatherCacheKey(
+  lat: number,
+  lon: number,
+  units: string,
+  functionName: FunctionName
+): string {
+  return `${lat.toFixed(4)},${lon.toFixed(4)},${units},${functionName}`;
 }
 
 /**
@@ -204,7 +224,10 @@ export async function geocodeCity(
     const errorData = (await response
       .json()
       .catch(() => ({ message: "Unknown error" }))) as { message?: string };
-    throw mapOpenWeatherError(response.status, errorData.message ?? "Unknown error");
+    throw mapOpenWeatherError(
+      response.status,
+      errorData.message ?? "Unknown error"
+    );
   }
 
   const data = await response.json();
@@ -245,16 +268,81 @@ export async function fetchCurrentWeather(
   units: string,
   lang: string,
   apiKey: string
-): Promise<{ data: OpenWeatherCurrentResponse; cached: boolean }> {
-  const cacheKey = getWeatherCacheKey(lat, lon, units);
+): Promise<{ data: OpenWeatherCurrentWeatherResponse; cached: boolean }> {
+  const cacheKey = getWeatherCacheKey(
+    lat,
+    lon,
+    units,
+    FunctionName.FETCH_CURRENT_WEATHER
+  );
 
   // Check cache first
   const cached = getFromCache(weatherCache, cacheKey);
   if (cached) {
-    return { data: cached, cached: true };
+    return { data: cached as OpenWeatherCurrentWeatherResponse, cached: true };
   }
 
   const url = `${OPENWEATHER_API_BASE}/weather?lat=${lat}&lon=${lon}&units=${units}&lang=${lang}&appid=${apiKey}`;
+  console.log("Fetching current weather from OpenWeather API", url);
+  const response = await fetchWithTimeout(url);
+
+  if (!response.ok) {
+    const errorData = (await response
+      .json()
+      .catch(() => ({ message: "Unknown error" }))) as { message?: string };
+    throw mapOpenWeatherError(
+      response.status,
+      errorData.message ?? "Unknown error"
+    );
+  }
+
+  const data = await response.json();
+  console.log("Current weather data from OpenWeather API", data);
+  const parsed = OpenWeatherCurrentWeatherResponseSchema.safeParse(data);
+  console.log("Parsed current weather data", parsed);
+  if (!parsed.success) {
+    Sentry.captureException(parsed.error, {
+      extra: { responseData: data, lat, lon, units },
+    });
+    throw new OpenWeatherError(500, "Invalid response from weather API");
+  }
+  // Cache the result
+  setInCache(weatherCache, cacheKey, parsed.data);
+
+  return { data: parsed.data, cached: false };
+}
+
+/**
+ * Fetches five day forecast weather data from OpenWeather API
+ * @param lat - Latitude
+ * @param lon - Longitude
+ * @param units - Temperature units ('metric' or 'imperial')
+ * @param lang - Language code for descriptions
+ * @param apiKey - OpenWeather API key
+ * @returns Raw OpenWeather five day forecast weather response
+ * @throws OpenWeatherError on API errors
+ */
+export async function fetchFiveDayForecast(
+  lat: number,
+  lon: number,
+  units: string,
+  lang: string,
+  apiKey: string
+): Promise<{ data: OpenWeatherFiveDayForecastResponse; cached: boolean }> {
+  const cacheKey = getWeatherCacheKey(
+    lat,
+    lon,
+    units,
+    FunctionName.FETCH_FIVE_DAY_FORECAST
+  );
+
+  // Check cache first
+  const cached = getFromCache(weatherCache, cacheKey);
+  if (cached) {
+    return { data: cached as OpenWeatherFiveDayForecastResponse, cached: true };
+  }
+
+  const url = `${OPENWEATHER_API_BASE}/forecast?lat=${lat}&lon=${lon}&units=${units}&lang=${lang}&appid=${apiKey}`;
 
   const response = await fetchWithTimeout(url);
 
@@ -262,11 +350,14 @@ export async function fetchCurrentWeather(
     const errorData = (await response
       .json()
       .catch(() => ({ message: "Unknown error" }))) as { message?: string };
-    throw mapOpenWeatherError(response.status, errorData.message ?? "Unknown error");
+    throw mapOpenWeatherError(
+      response.status,
+      errorData.message ?? "Unknown error"
+    );
   }
 
   const data = await response.json();
-  const parsed = OpenWeatherCurrentResponseSchema.safeParse(data);
+  const parsed = OpenWeatherFiveDayForecastResponseSchema.safeParse(data);
 
   if (!parsed.success) {
     Sentry.captureException(parsed.error, {
@@ -301,7 +392,7 @@ function unixToISOString(timestamp: number, timezoneOffset: number): string {
  * @returns Transformed current weather response
  */
 export function transformWeatherResponse(
-  owResponse: OpenWeatherCurrentResponse,
+  owResponse: OpenWeatherCurrentWeatherResponse,
   units: string,
   cached: boolean
 ): CurrentWeatherResponse {
@@ -368,6 +459,66 @@ export function transformWeatherResponse(
 }
 
 /**
+ * Transforms OpenWeather API response to our API response format
+ * @param owResponse - Raw OpenWeather response
+ * @param units - Temperature units used in request
+ * @param cached - Whether the response was from cache
+ * @returns Transformed five day forecast response
+ */
+export function transformFiveDayForecastResponse(
+  owResponse: OpenWeatherFiveDayForecastResponse,
+  units: string,
+  cached: boolean
+): FiveDayForecastResponse {
+  return {
+    list: owResponse.list.map((item) => ({
+      dt: item.dt,
+      main: {
+        temp: item.main.temp,
+        feels_like: item.main.feels_like,
+        temp_min: item.main.temp_min,
+        temp_max: item.main.temp_max,
+        pressure: item.main.pressure,
+        humidity: item.main.humidity,
+        sea_level: item.main.sea_level,
+        grnd_level: item.main.grnd_level,
+        temp_kf: item.main.temp_kf ?? 0,
+      },
+      weather: item.weather,
+      clouds: {
+        all: item.clouds.all,
+      },
+      wind: {
+        speed: item.wind.speed,
+        deg: item.wind.deg,
+        gust: item.wind.gust,
+      },
+      visibility: item.visibility,
+      pop: item.pop,
+      sys: {
+        pod: item.sys.pod,
+      },
+      dt_txt: item.dt_txt,
+    })),
+    city: {
+      id: owResponse.city.id,
+      name: owResponse.city.name,
+      coord: {
+        lat: owResponse.city.coord.lat,
+        lon: owResponse.city.coord.lon,
+      },
+      country: owResponse.city.country,
+      population: owResponse.city.population,
+      timezone: owResponse.city.timezone,
+      sunrise: unixToISOString(owResponse.city.sunrise, 0),
+      sunset: unixToISOString(owResponse.city.sunset, 0),
+    },
+    cached,
+    timestamp: unixToISOString(owResponse.list[0].dt, 0),
+  };
+}
+
+/**
  * Main service function to get current weather for a city
  * Handles geocoding, caching, and response transformation
  * @param query - Weather query parameters
@@ -376,7 +527,7 @@ export function transformWeatherResponse(
  * @throws OpenWeatherError on any API errors
  */
 export async function getCurrentWeather(
-  query: WeatherQuery,
+  query: CurrentWeatherQuery,
   apiKey: string
 ): Promise<CurrentWeatherResponse> {
   const { city, units, lang, lat, lon } = query;
@@ -399,6 +550,33 @@ export async function getCurrentWeather(
 
   // Step 3: Transform to API response format
   return transformWeatherResponse(weatherData, units, cached);
+}
+
+/**
+ * Main service function to get five day forecast for a location
+ * Handles geocoding, caching, and response transformation
+ * @param query - Five day forecast query parameters
+ * @param apiKey - OpenWeather API key
+ * @returns Five day forecast response
+ * @throws OpenWeatherError on any API errors
+ */
+export async function getFiveDayForecast(
+  query: FiveDayForecastQuery,
+  apiKey: string
+): Promise<FiveDayForecastResponse> {
+  const { lang, lat, lon, units } = query;
+  const language = lang ?? "en";
+
+  const { data: weatherData, cached } = await fetchFiveDayForecast(
+    lat ?? 0,
+    lon ?? 0,
+    units,
+    language,
+    apiKey
+  );
+
+  // Step 3: Transform to API response format
+  return transformFiveDayForecastResponse(weatherData, units, cached);
 }
 
 /**

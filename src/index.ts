@@ -53,12 +53,8 @@ const app = new OpenAPIHono<{ Bindings: Bindings }>();
  * Configure CORS middleware
  * Allows requests from the frontend development server
  */
-app.use(
-  "*",
-  cors({
-    origin: "http://localhost:5173",
-  }),
-);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+app.use("*", cors({ origin: "http://localhost:5174" }) as any);
 
 /**
  * Rate limiting middleware
@@ -131,7 +127,7 @@ app.onError((err, c) => {
           message: err.message,
         },
       },
-      err.status,
+      err.status
     );
   }
 
@@ -147,7 +143,7 @@ app.onError((err, c) => {
           process.env.NODE_ENV === "development" ? err.message : undefined,
       },
     },
-    500,
+    500
   );
 });
 
@@ -163,7 +159,7 @@ app.notFound((c) => {
         details: `Route ${c.req.method} ${c.req.path} not found`,
       },
     },
-    404,
+    404
   );
 });
 

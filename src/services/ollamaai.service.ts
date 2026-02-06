@@ -153,7 +153,7 @@ export async function fetchAIText(
     });
     throw new Error("Invalid response from Ollama AI API");
   }
-  // console.log("Ollama AI API result:", result);
+  console.log("Ollama AI API result:", result);
   setInCache(aiCache, cacheKey, parsed.data);
   return { data: parsed.data, cached: false };
 }
