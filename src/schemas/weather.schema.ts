@@ -313,7 +313,7 @@ export const FiveDayForecastResponseSchema = z
             description: "Humidity percentage",
             example: 65,
           }),
-          temp_kf: z.number().openapi({
+          temp_kf: z.number().optional().openapi({
             description: "Temperature forecasted, Kelvin",
             example: 21.8,
           }),
@@ -353,8 +353,8 @@ export const FiveDayForecastResponseSchema = z
             example: "d",
           }),
         }),
-        dt_txt: z.string().datetime().openapi({
-          description: "Time of data forecasted, ISO format",
+        dt_txt: z.string().openapi({
+          description: "Time of data forecasted (YYYY-MM-DD HH:MM:SS)",
           example: "2026-02-06 00:00:00",
         }),
       })

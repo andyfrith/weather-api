@@ -283,7 +283,7 @@ export async function fetchCurrentWeather(
   }
 
   const url = `${OPENWEATHER_API_BASE}/weather?lat=${lat}&lon=${lon}&units=${units}&lang=${lang}&appid=${apiKey}`;
-  console.log("Fetching current weather from OpenWeather API", url);
+  // console.log("Fetching current weather from OpenWeather API", url);
   const response = await fetchWithTimeout(url);
 
   if (!response.ok) {
@@ -297,9 +297,9 @@ export async function fetchCurrentWeather(
   }
 
   const data = await response.json();
-  console.log("Current weather data from OpenWeather API", data);
+  // console.log("Current weather data from OpenWeather API", data);
   const parsed = OpenWeatherCurrentWeatherResponseSchema.safeParse(data);
-  console.log("Parsed current weather data", parsed);
+  // console.log("Parsed current weather data", parsed);
   if (!parsed.success) {
     Sentry.captureException(parsed.error, {
       extra: { responseData: data, lat, lon, units },
@@ -480,8 +480,8 @@ export function transformFiveDayForecastResponse(
         temp_max: item.main.temp_max,
         pressure: item.main.pressure,
         humidity: item.main.humidity,
-        sea_level: item.main.sea_level,
-        grnd_level: item.main.grnd_level,
+        sea_level: item.main.sea_level ?? 0,
+        grnd_level: item.main.grnd_level ?? 0,
         temp_kf: item.main.temp_kf ?? 0,
       },
       weather: item.weather,

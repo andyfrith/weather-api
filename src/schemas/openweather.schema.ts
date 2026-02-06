@@ -38,11 +38,11 @@ export const MainWeatherSchema = z.object({
   humidity: z.number().describe("Humidity percentage"),
   sea_level: z
     .number()
-    // .optional()
+    .optional()
     .describe("Atmospheric pressure at sea level in hPa"),
   grnd_level: z
     .number()
-    // .optional()
+    .optional()
     .describe("Atmospheric pressure at ground level in hPa"),
   temp_kf: z
     .number()
@@ -123,26 +123,28 @@ export const OpenWeatherCurrentWeatherResponseSchema = z.object({
 
 /**
  * Complete schema for OpenWeather five day forecast API response
- * Endpoint: /data/2.5/weather
+ * Endpoint: /data/2.5/forecast
  */
 export const OpenWeatherFiveDayForecastResponseSchema = z.object({
-  list: z.array(
-    z.object({
-      dt: z.number().describe("Time of data forecasted, unix, UTC"),
-      main: MainWeatherSchema,
-      weather: z.array(WeatherConditionSchema).min(1),
-      clouds: CloudsSchema,
-      wind: WindSchema,
-      visibility: z.number().describe("Visibility in meters"),
-      pop: z.number().describe("Probability of precipitation"),
-      sys: z
-        .object({
-          pod: z.string().describe("Part of the day (d=day, n=night)"),
-        })
-        .describe("System parameters"),
-      dt_txt: z.string().describe("Time of data forecasted, ISO format"),
-    })
-  ),
+  list: z
+    .array(
+      z.object({
+        dt: z.number().describe("Time of data forecasted, unix, UTC"),
+        main: MainWeatherSchema,
+        weather: z.array(WeatherConditionSchema).min(1),
+        clouds: CloudsSchema,
+        wind: WindSchema,
+        visibility: z.number().describe("Visibility in meters"),
+        pop: z.number().describe("Probability of precipitation"),
+        sys: z
+          .object({
+            pod: z.string().describe("Part of the day (d=day, n=night)"),
+          })
+          .describe("System parameters"),
+        dt_txt: z.string().describe("Time of data forecasted, ISO format"),
+      })
+    )
+    .min(1),
   city: z.object({
     id: z.number().describe("City ID"),
     name: z.string().describe("City name"),

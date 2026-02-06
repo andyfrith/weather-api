@@ -41,7 +41,7 @@ const aiCache = new Map<string, CacheEntry<AITextResponse>>();
 function getAICacheKey(
   prompt: string,
   ollamaHost: string,
-  ollamaModel: string,
+  ollamaModel: string
 ): string {
   return `${ollamaHost}::${ollamaModel}::${prompt.trim()}`;
 }
@@ -54,7 +54,7 @@ function getAICacheKey(
  */
 function getFromCache<T>(
   cache: Map<string, CacheEntry<T>>,
-  key: string,
+  key: string
 ): T | null {
   const entry = cache.get(key);
   if (entry && entry.expires > Date.now()) {
@@ -76,7 +76,7 @@ function getFromCache<T>(
 function setInCache<T>(
   cache: Map<string, CacheEntry<T>>,
   key: string,
-  data: T,
+  data: T
 ): void {
   if (cache.size >= MAX_CACHE_ENTRIES) {
     const oldestKey = cache.keys().next().value;
@@ -120,7 +120,7 @@ export function getCacheStats(): {
 export async function fetchAIText(
   prompt: string,
   ollamaHost: string,
-  ollamaModel: string,
+  ollamaModel: string
 ): Promise<{ data: AITextResponse; cached: boolean }> {
   const cacheKey = getAICacheKey(prompt, ollamaHost, ollamaModel);
   const cached = getFromCache(aiCache, cacheKey);
@@ -153,7 +153,7 @@ export async function fetchAIText(
     });
     throw new Error("Invalid response from Ollama AI API");
   }
-  console.log("Ollama AI API result:", result);
+  // console.log("Ollama AI API result:", result);
   setInCache(aiCache, cacheKey, parsed.data);
   return { data: parsed.data, cached: false };
 }
@@ -169,7 +169,7 @@ export async function fetchAIText(
 export async function getText(
   query: AIQuery,
   ollamaHost: string,
-  ollamaModel: string,
+  ollamaModel: string
 ): Promise<AITextResponse> {
   const { prompt } = query;
   if (!prompt) {
@@ -179,7 +179,7 @@ export async function getText(
   const { data: aiData, cached } = await fetchAIText(
     prompt,
     ollamaHost,
-    ollamaModel,
+    ollamaModel
   );
   return aiData;
 }
