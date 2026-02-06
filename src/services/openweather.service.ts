@@ -514,7 +514,10 @@ export function transformFiveDayForecastResponse(
       sunset: unixToISOString(owResponse.city.sunset, 0),
     },
     cached,
-    timestamp: unixToISOString(owResponse.list[0].dt, 0),
+    timestamp:
+      owResponse.list.length > 0
+        ? unixToISOString(owResponse.list[0].dt, 0)
+        : new Date().toISOString(),
   };
 }
 
