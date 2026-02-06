@@ -56,7 +56,7 @@ export const MainWeatherSchema = z.object({
 export const WindSchema = z.object({
   speed: z.number().describe("Wind speed"),
   deg: z.number().describe("Wind direction in degrees"),
-  gust: z.number().describe("Wind gust speed"),
+  gust: z.number().optional().describe("Wind gust speed"),
 });
 
 /**

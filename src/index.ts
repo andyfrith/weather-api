@@ -54,7 +54,10 @@ const app = new OpenAPIHono<{ Bindings: Bindings }>();
  * Allows requests from the frontend development server
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-app.use("*", cors({ origin: "http://localhost:5174" }) as any);
+app.use(
+  "*",
+  cors({ origin: ["http://localhost:5173", "http://localhost:5174"] }) as any
+);
 
 /**
  * Rate limiting middleware

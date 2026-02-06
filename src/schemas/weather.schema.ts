@@ -334,7 +334,7 @@ export const FiveDayForecastResponseSchema = z
             description: "Wind direction in degrees",
             example: 180,
           }),
-          gust: z.number().openapi({
+          gust: z.number().optional().openapi({
             description: "Wind gust speed",
             example: 7.8,
           }),
