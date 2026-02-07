@@ -10,7 +10,7 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { HTTPException } from "hono/http-exception";
 import {
-  WeatherQuerySchema,
+  CurrentWeatherQuerySchema,
   CurrentWeatherResponseSchema,
   ErrorResponseSchema,
   RateLimitErrorSchema,
@@ -21,6 +21,11 @@ import {
   OpenWeatherError,
   getCacheStats,
 } from "../services";
+import {
+  FiveDayForecastQuerySchema,
+  FiveDayForecastResponseSchema,
+} from "../schemas/weather.schema";
+import { getFiveDayForecast } from "../services/openweather.service";
 
 /**
  * Environment bindings type definition
@@ -46,7 +51,7 @@ const getCurrentWeatherRoute = createRoute({
   description:
     "Retrieves current weather data for a specified city using the OpenWeather API.",
   request: {
-    query: WeatherQuerySchema,
+    query: CurrentWeatherQuerySchema,
   },
   responses: {
     200: {
@@ -75,6 +80,88 @@ const getCurrentWeatherRoute = createRoute({
     },
     404: {
       description: "City not found",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    429: {
+      description: "Rate limit exceeded",
+      content: {
+        "application/json": {
+          schema: RateLimitErrorSchema,
+        },
+      },
+    },
+    500: {
+      description: "Internal server error",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    503: {
+      description: "Service unavailable - OpenWeather API unreachable",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    504: {
+      description: "Gateway timeout - OpenWeather API timed out",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+/**
+ * Route definition for GET /weather/five-day-forecast
+ * Retrieves five day forecast weather data for a location
+ */
+const getFiveDayForecastRoute = createRoute({
+  method: "get",
+  path: "/weather/five-day-forecast",
+  tags: ["Weather"],
+  summary: "Get five day forecast weather",
+  description:
+    "Retrieves five day forecast weather data for a location using the OpenWeather API.",
+  request: {
+    query: FiveDayForecastQuerySchema,
+  },
+  responses: {
+    200: {
+      description: "Five day forecast weather data retrieved successfully",
+      content: {
+        "application/json": {
+          schema: FiveDayForecastResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: "Invalid request parameters",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: "Invalid API key",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: "Location not found",
       content: {
         "application/json": {
           schema: ErrorResponseSchema,
@@ -182,6 +269,29 @@ weatherApp.openapi(getCurrentWeatherRoute, async (c) => {
 
   try {
     const weatherData = await getCurrentWeather(query, apiKey);
+    return c.json(weatherData, 200);
+  } catch (error) {
+    if (error instanceof OpenWeatherError) {
+      throw mapToHTTPException(error);
+    }
+    throw error;
+  }
+});
+
+// Register the five day forecast route handler
+weatherApp.openapi(getFiveDayForecastRoute, async (c) => {
+  const query = c.req.valid("query");
+  // In Bun runtime, environment variables are accessed via process.env
+  const apiKey = process.env.OPENWEATHER_API_KEY;
+
+  if (!apiKey) {
+    throw new HTTPException(500, {
+      message: "OpenWeather API key not configured",
+    });
+  }
+
+  try {
+    const weatherData = await getFiveDayForecast(query, apiKey);
     return c.json(weatherData, 200);
   } catch (error) {
     if (error instanceof OpenWeatherError) {

@@ -8,7 +8,7 @@ import { z } from "@hono/zod-openapi";
 /**
  * Query parameter schema for weather requests
  */
-export const WeatherQuerySchema = z
+export const CurrentWeatherQuerySchema = z
   .object({
     lat: z.coerce.number().optional().openapi({
       description: "Latitude",
@@ -32,7 +32,32 @@ export const WeatherQuerySchema = z
       example: "en",
     }),
   })
-  .openapi("WeatherQuery");
+  .openapi("CurrentWeatherQuery");
+
+/**
+ * Query parameter schema for five day forecast weather requests
+ */
+export const FiveDayForecastQuerySchema = z
+  .object({
+    lat: z.coerce.number().openapi({
+      description: "Latitude",
+      example: 51.5074,
+    }),
+    lon: z.coerce.number().openapi({
+      description: "Longitude",
+      example: -0.1278,
+    }),
+    units: z.enum(["metric", "imperial"]).default("metric").openapi({
+      description:
+        "Temperature units: 'metric' (Celsius) or 'imperial' (Fahrenheit)",
+      example: "metric",
+    }),
+    lang: z.string().length(2).default("en").optional().openapi({
+      description: "Language code for descriptions (e.g., 'en', 'es', 'fr')",
+      example: "en",
+    }),
+  })
+  .openapi("FiveDayForecastQuery");
 
 /**
  * Schema for geographic coordinates in API response
@@ -244,6 +269,139 @@ export const CurrentWeatherResponseSchema = z
   .openapi("CurrentWeatherResponse");
 
 /**
+ * Complete schema for five day forecast weather API response
+ */
+export const FiveDayForecastResponseSchema = z
+  .object({
+    list: z.array(
+      z.object({
+        dt: z.number().openapi({
+          description: "Time of data forecasted, unix, UTC",
+          example: 1770336000,
+        }),
+        main: z.object({
+          temp: z.number().openapi({
+            description:
+              "Temperature. Unit Default: Kelvin, Metric: Celsius, Imperial: Fahrenheit",
+            example: 21.8,
+          }),
+          feels_like: z.number().openapi({
+            description: "Human perception of temperature",
+            example: 21.8,
+          }),
+          temp_min: z.number().openapi({
+            description: "Minimum temperature",
+            example: 19.0,
+          }),
+          temp_max: z.number().openapi({
+            description: "Maximum temperature",
+            example: 25.0,
+          }),
+          pressure: z.number().openapi({
+            description: "Atmospheric pressure in hPa",
+            example: 1013,
+          }),
+          sea_level: z.number().openapi({
+            description: "Atmospheric pressure at sea level in hPa",
+            example: 1013,
+          }),
+          grnd_level: z.number().openapi({
+            description: "Atmospheric pressure at ground level in hPa",
+            example: 1013,
+          }),
+          humidity: z.number().openapi({
+            description: "Humidity percentage",
+            example: 65,
+          }),
+          temp_kf: z.number().optional().openapi({
+            description: "Temperature forecasted, Kelvin",
+            example: 21.8,
+          }),
+        }),
+        weather: z.array(WeatherConditionResponseSchema),
+        clouds: z.object({
+          all: z.number().openapi({
+            description: "Cloudiness percentage",
+            example: 20,
+          }),
+        }),
+        wind: z.object({
+          speed: z.number().openapi({
+            description: "Wind speed",
+            example: 5.2,
+          }),
+          deg: z.number().openapi({
+            description: "Wind direction in degrees",
+            example: 180,
+          }),
+          gust: z.number().optional().openapi({
+            description: "Wind gust speed",
+            example: 7.8,
+          }),
+        }),
+        visibility: z.number().openapi({
+          description: "Visibility in meters",
+          example: 10000,
+        }),
+        pop: z.number().openapi({
+          description: "Probability of precipitation",
+          example: 0,
+        }),
+        sys: z.object({
+          pod: z.string().openapi({
+            description: "Part of the day (d=day, n=night)",
+            example: "d",
+          }),
+        }),
+        dt_txt: z.string().openapi({
+          description: "Time of data forecasted (YYYY-MM-DD HH:MM:SS)",
+          example: "2026-02-06 00:00:00",
+        }),
+      })
+    ),
+    city: z.object({
+      id: z.number().openapi({
+        description: "City ID",
+        example: 1234567890,
+      }),
+      name: z.string().openapi({
+        description: "City name",
+        example: "London",
+      }),
+      coord: CoordinatesResponseSchema,
+      country: z.string().openapi({
+        description: "Country code",
+        example: "GB",
+      }),
+      population: z.number().openapi({
+        description: "Population",
+        example: 1000000,
+      }),
+      timezone: z.number().openapi({
+        description: "Timezone offset from UTC in seconds",
+        example: 0,
+      }),
+      sunrise: z.string().datetime().openapi({
+        description: "Sunrise time in ISO 8601 format",
+        example: "2024-01-15T07:45:00Z",
+      }),
+      sunset: z.string().datetime().openapi({
+        description: "Sunset time in ISO 8601 format",
+        example: "2024-01-15T16:30:00Z",
+      }),
+    }),
+    cached: z.boolean().openapi({
+      description: "Whether the response was served from cache",
+      example: false,
+    }),
+    timestamp: z.string().datetime().openapi({
+      description: "Data calculation timestamp in ISO 8601 format",
+      example: "2024-01-15T12:00:00Z",
+    }),
+  })
+  .openapi("FiveDayForecastResponse");
+
+/**
  * Schema for error details
  */
 export const ErrorDetailsSchema = z
@@ -326,7 +484,8 @@ export const HealthCheckResponseSchema = z
   .openapi("HealthCheckResponse");
 
 // Type exports for use throughout the application
-export type WeatherQuery = z.infer<typeof WeatherQuerySchema>;
+export type CurrentWeatherQuery = z.infer<typeof CurrentWeatherQuerySchema>;
+export type FiveDayForecastQuery = z.infer<typeof FiveDayForecastQuerySchema>;
 export type CoordinatesResponse = z.infer<typeof CoordinatesResponseSchema>;
 export type WeatherConditionResponse = z.infer<
   typeof WeatherConditionResponseSchema
@@ -340,6 +499,9 @@ export type SnowVolume = z.infer<typeof SnowVolumeSchema>;
 export type PrecipitationResponse = z.infer<typeof PrecipitationResponseSchema>;
 export type CurrentWeatherResponse = z.infer<
   typeof CurrentWeatherResponseSchema
+>;
+export type FiveDayForecastResponse = z.infer<
+  typeof FiveDayForecastResponseSchema
 >;
 export type ErrorDetails = z.infer<typeof ErrorDetailsSchema>;
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
